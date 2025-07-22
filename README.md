@@ -1,6 +1,6 @@
 LanCalc is a desktop application built with PyQt5, designed to calculate network configurations for Windows and Linux systems.
 
-![image](https://github.com/KPbICO6Ou/lancalc/assets/171623858/426277bf-f220-4ff9-b3f0-2e67f3ff619e)
+<img width="316" height="403" alt="lancalc" src="https://github.com/user-attachments/assets/46e2e400-e572-4dae-a808-569243e0f37f" />
 
 [Download](https://github.com/KPbICO6Ou/lancalc/releases)
 
