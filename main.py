@@ -8,10 +8,11 @@ import netifaces
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QKeyEvent
 
 VERSION = '0.1.3'
+
 
 class ClickToCopyLineEdit(QLineEdit):
     def __init__(self, parent=None):
@@ -21,6 +22,7 @@ class ClickToCopyLineEdit(QLineEdit):
         super().mousePressEvent(event)  # Call base class to handle the event
         self.selectAll()                 # Select all text in the field
         QApplication.clipboard().setText(self.text())  # Copy text to clipboard
+
 
 class LanCalc(QWidget):
     def __init__(self):

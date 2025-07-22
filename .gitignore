@@ -1,6 +1,9 @@
 .idea
+.venv
 build
 cpython
 dist
 *.spec
 build.sh
+__pycache__
+.pytest_cache
