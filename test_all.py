@@ -4,7 +4,7 @@ import pytest
 from PyQt5.QtCore import Qt
 from main import LanCalc
 
-# Тестовые данные: (ip, prefix, ожидаемые значения в полях вывода)
+# Data for tests
 test_cases = [
     ("192.168.1.1", "24", {
         'network': '192.168.1.0',
