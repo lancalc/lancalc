@@ -23,6 +23,14 @@ class ClickToCopyLineEdit(QLineEdit):
         self.selectAll()                 # Select all text in the field
         QApplication.clipboard().setText(self.text())  # Copy text to clipboard
 
+class IpInputLineEdit(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def focusInEvent(self, event):
+        self.setStyleSheet("color: black;")
+        super().focusInEvent(event)
+
 
 class LanCalc(QWidget):
     def __init__(self):
@@ -46,7 +54,7 @@ class LanCalc(QWidget):
         ip_layout = QHBoxLayout()
         ip_label = QLabel("IP Address")
         ip_label.setFont(font)
-        self.ip_input = QLineEdit(self)
+        self.ip_input = IpInputLineEdit(self)
         self.ip_input.setFont(font)
         self.ip_input.setFixedWidth(input_width)
         self.ip_input.setAlignment(Qt.AlignRight)
@@ -159,6 +167,7 @@ class LanCalc(QWidget):
 
     def calculate_network(self, *args, **kwargs):
         try:
+            self.ip_input.setStyleSheet("color: black;")
             ip_addr = self.ip_input.text()
             prefix, netmask = self.network_selector.currentText().split('/')
             rang = iptools.IpRange(f'{ip_addr}/{prefix}')
@@ -171,8 +180,15 @@ class LanCalc(QWidget):
             hosts = rang.__len__() - 2 if rang.__len__() > 2 else rang.__len__()
             hosts = str(hosts) if rang.__len__() > 2 else f"{hosts}*"
             self.hosts_output.setText(hosts)
-        except ValueError as e:
-            QMessageBox.critical(self, 'Error', str(e))
+        except (ValueError, TypeError) as e:
+            self.ip_input.setStyleSheet("color: red;")
+            self.network_output.setText("")
+            self.prefix_output.setText("")
+            self.netmask_output.setText("")
+            self.broadcast_output.setText("")
+            self.hostmin_output.setText("")
+            self.hostmax_output.setText("")
+            self.hosts_output.setText("")   
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Return:
