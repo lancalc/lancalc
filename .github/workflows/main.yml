@@ -135,9 +135,9 @@ jobs:
         draft: true
         prerelease: false
         files: |
-          dist/artifact/lancalc-linux.zip
-          dist/artifact/lancalc-macos.zip
-          dist/artifact/lancalc-windows.zip
+          dist/lancalc-linux.zip
+          dist/lancalc-macos.zip
+          dist/lancalc-windows.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
