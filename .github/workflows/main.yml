@@ -41,7 +41,7 @@ jobs:
         set -eux
         tree
     - name: Upload artifact for Linux
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         # name: artifact
         path: dist/
@@ -71,7 +71,7 @@ jobs:
           set -eux
           ls -lah dist
       - name: Upload artifact for MacOS
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           # name: artifact
           path: dist/
@@ -96,7 +96,7 @@ jobs:
         run: |
           Compress-Archive -Path dist/lancalc.exe -DestinationPath dist/lancalc-windows.zip
       - name: Upload artifact for Windows
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           # name: artifact
           path: dist/
@@ -108,7 +108,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Download artifacts
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v4
       with:
         # name: artifact
         path: dist
