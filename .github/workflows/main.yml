@@ -35,7 +35,7 @@ jobs:
     - name: Zip binary
       run: |
         set -eux
-        zip -rm dist/lancalc-linux.zip dist/lancalc
+        cd dist && zip -rm lancalc-linux.zip lancalc
     - name: List artifacts
       run: |
         set -eux
@@ -44,7 +44,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: lancalc-linux
-        path: dist/
+        path: dist/lancalc-linux.zip
 
   build-macos:
     runs-on: macos-latest
@@ -65,7 +65,7 @@ jobs:
       - name: Zip binary
         run: |
           set -eux
-          zip -rm dist/lancalc-macos.zip dist/lancalc
+          cd dist && zip -rm lancalc-macos.zip lancalc
       - name: List artifacts
         run: |
           set -eux
@@ -74,7 +74,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lancalc-macos
-          path: dist/
+          path: dist/lancalc-macos.zip
 
   build-windows:
     runs-on: windows-latest
@@ -94,12 +94,13 @@ jobs:
       - name: Zip binary
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/lancalc.exe -DestinationPath dist/lancalc-windows.zip
+          cd dist
+          Compress-Archive -Path lancalc.exe -DestinationPath lancalc-windows.zip
       - name: Upload artifact for Windows
         uses: actions/upload-artifact@v4
         with:
           name: lancalc-windows
-          path: dist/
+          path: dist/lancalc-windows.zip
 
   release:
     needs: [build-linux, build-windows, build-macos]
