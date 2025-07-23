@@ -12,6 +12,28 @@ License
 
 Distributed under the MIT License. See LICENSE for more information.
 
-Contact
+## Dependencies
+Python 3.7+ is required, along with the following libraries:
+
+```bash
+pip3 install -r requirements.txt
+```
+
+## Running the Application
+
+```bash
+python3 main.py
+```
+
+## For Developers
+
+```bash
+pip3 install pre-commit flake8 pytest pytest-qt
+pre-commit install
+pre-commit run --all-files
+pre-commit autoupdate
+```
+
+## Contact
 
 [GitHub](https://github.com/lancalc/lancalc) [Telegram](https://t.me/wachawo) 

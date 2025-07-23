@@ -6,7 +6,7 @@ import ipaddress
 import iptools
 import netifaces
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QKeyEvent
@@ -22,6 +22,7 @@ class ClickToCopyLineEdit(QLineEdit):
         super().mousePressEvent(event)  # Call base class to handle the event
         self.selectAll()                 # Select all text in the field
         QApplication.clipboard().setText(self.text())  # Copy text to clipboard
+
 
 class IpInputLineEdit(QLineEdit):
     def __init__(self, parent=None):
@@ -180,7 +181,7 @@ class LanCalc(QWidget):
             hosts = rang.__len__() - 2 if rang.__len__() > 2 else rang.__len__()
             hosts = str(hosts) if rang.__len__() > 2 else f"{hosts}*"
             self.hosts_output.setText(hosts)
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             self.ip_input.setStyleSheet("color: red;")
             self.network_output.setText("")
             self.prefix_output.setText("")
@@ -188,7 +189,7 @@ class LanCalc(QWidget):
             self.broadcast_output.setText("")
             self.hostmin_output.setText("")
             self.hostmax_output.setText("")
-            self.hosts_output.setText("")   
+            self.hosts_output.setText("")
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Return:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import pytest
-from PyQt5.QtCore import Qt
 from main import LanCalc
+# from PyQt5.QtCore import Qt
 
 # Data for tests
 test_cases = [
@@ -58,11 +58,13 @@ test_cases = [
     }),
 ]
 
+
 @pytest.fixture
 def app(qtbot):
     test_app = LanCalc()
     qtbot.addWidget(test_app)
     return test_app
+
 
 @pytest.mark.parametrize("ip,prefix,expected", test_cases)
 def test_lancalc_calculate(app, ip, prefix, expected):
@@ -84,11 +86,12 @@ def test_lancalc_calculate(app, ip, prefix, expected):
     assert app.hostmax_output.text() == expected['hostmax']
     assert app.hosts_output.text() == expected['hosts']
     # Check color
-    color = app.ip_input.palette().color(app.ip_input.foregroundRole()).name()
+    # color = app.ip_input.palette().color(app.ip_input.foregroundRole()).name()
     if expected['ip_color'] == 'red':
         assert 'red' in app.ip_input.styleSheet()
     else:
         assert 'color: black' in app.ip_input.styleSheet() or app.ip_input.styleSheet() == ''
+
 
 def test_window_launch(app):
     assert app.isVisible() is False  # Window is not shown by default

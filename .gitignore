@@ -7,3 +7,5 @@ dist
 build.sh
 __pycache__
 .pytest_cache
+*.pyc
+*.log

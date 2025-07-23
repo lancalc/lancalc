@@ -2,3 +2,5 @@ iptools==0.7.0
 netifaces==0.11.0
 PyQt5==5.15.10
 PyInstaller==6.7.0
+pytest==8.4.1
+pytest-qt==4.5.0
