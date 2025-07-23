@@ -107,10 +107,20 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    - name: Download artifacts
+    - name: Download Linux artifact
       uses: actions/download-artifact@v4
       with:
-        # name: artifact
+        name: lancalc-linux
+        path: dist
+    - name: Download MacOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: lancalc-macos
+        path: dist
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: lancalc-windows
         path: dist
     - name: List artifacts
       run: |
