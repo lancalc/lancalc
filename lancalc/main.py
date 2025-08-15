@@ -221,21 +221,50 @@ def _get_cidr_linux(ip: str) -> int:
 
 def validate_ip(ip_str: str) -> None:
     """Validate IPv4 address format."""
+    if not ip_str or not ip_str.strip():
+        raise ValueError("IP address cannot be empty")
+    
+    ip_str = ip_str.strip()
+    
+    # Check basic format with regex first for better error messages
+    ip_pattern = r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$"
+    match = re.match(ip_pattern, ip_str)
+    if not match:
+        raise ValueError(f"Invalid IP address format. Expected format: x.x.x.x (e.g., 192.168.1.1), got: {ip_str}")
+    
+    # Check each octet range
+    octets = [int(match.group(i)) for i in range(1, 5)]
+    for i, octet in enumerate(octets, 1):
+        if not 0 <= octet <= 255:
+            raise ValueError(f"Invalid octet {i}: {octet}. Each octet must be between 0 and 255")
+    
+    # Final validation with ipaddress module
     try:
         ipaddress.IPv4Address(ip_str)
     except ipaddress.AddressValueError as e:
-        raise ValueError(f"Invalid IP address format: {ip_str}") from e
+        raise ValueError(f"Invalid IP address: {ip_str}") from e
 
 
 def validate_prefix(prefix_str: str) -> int:
     """Validate CIDR prefix and return as integer."""
+    if not prefix_str or not prefix_str.strip():
+        raise ValueError("Prefix cannot be empty")
+    
+    prefix_str = prefix_str.strip()
+    
+    # Check if it's a valid integer
+    if not prefix_str.isdigit():
+        raise ValueError(f"Prefix must be a number, got: {prefix_str}")
+    
     try:
         p = int(prefix_str)
-        if not 0 <= p <= 32:
-            raise ValueError(f"CIDR prefix must be 0-32, got {p}")
-        return p
-    except ValueError as e:
-        raise ValueError(f"Invalid CIDR prefix: {prefix_str}") from e
+    except ValueError:
+        raise ValueError(f"Invalid prefix format: {prefix_str}")
+    
+    if not 0 <= p <= 32:
+        raise ValueError(f"Prefix must be between 0 and 32, got: {p}")
+    
+    return p
 
 
 def compute(ip: str, prefix: int) -> dict:
@@ -288,6 +317,45 @@ def compute(ip: str, prefix: int) -> dict:
     }
 
 
+def validate_cidr_format(cidr_str: str) -> tuple[str, str]:
+    """
+    Validate CIDR format and provide detailed error messages.
+    
+    Args:
+        cidr_str: CIDR notation string
+        
+    Returns:
+        Tuple of (ip, prefix_str) if valid
+        
+    Raises:
+        ValueError: with specific error message about what's wrong
+    """
+    if not cidr_str or not cidr_str.strip():
+        raise ValueError("Empty input. Please provide an address in CIDR format (e.g., 192.168.1.1/24)")
+    
+    cidr_str = cidr_str.strip()
+    
+    # Check if it contains the slash separator
+    if '/' not in cidr_str:
+        raise ValueError(f"Missing '/' separator. Expected format: IP/PREFIX (e.g., 192.168.1.1/24), got: {cidr_str}")
+    
+    # Split into IP and prefix parts
+    parts = cidr_str.split('/')
+    if len(parts) != 2:
+        raise ValueError(f"Invalid format. Expected exactly one '/' separator, got: {cidr_str}")
+    
+    ip_part, prefix_part = parts
+    
+    # Validate IP part format
+    if not ip_part.strip():
+        raise ValueError("IP address part is empty. Expected format: IP/PREFIX (e.g., 192.168.1.1/24)")
+    
+    if not prefix_part.strip():
+        raise ValueError("Prefix part is empty. Expected format: IP/PREFIX (e.g., 192.168.1.1/24)")
+    
+    return ip_part.strip(), prefix_part.strip()
+
+
 def parse_cidr(cidr_str: str) -> tuple[str, int]:
     """
     Parse CIDR notation (e.g., "192.168.1.1/24") into IP and prefix.
@@ -301,15 +369,22 @@ def parse_cidr(cidr_str: str) -> tuple[str, int]:
     Raises:
         ValueError: if CIDR format is invalid
     """
-    pattern = r"^(?P<ip>\d{1,3}(?:\.\d{1,3}){3})/(?P<prefix>\d{1,2})$"
-    match = re.match(pattern, cidr_str.strip())
-    if not match:
-        raise ValueError("Expected ADDRESS in CIDR form, e.g. 192.168.88.254/24")
+    # First validate the format and get parts
+    ip_part, prefix_part = validate_cidr_format(cidr_str)
+    
+    # Validate IP address format
+    try:
+        validate_ip(ip_part)
+    except ValueError as e:
+        raise ValueError(f"Invalid IP address '{ip_part}': {str(e)}")
+    
+    # Validate prefix
+    try:
+        prefix = validate_prefix(prefix_part)
+    except ValueError as e:
+        raise ValueError(f"Invalid prefix '{prefix_part}': {str(e)}")
 
-    ip = match.group('ip')
-    prefix = validate_prefix(match.group('prefix'))
-
-    return ip, prefix
+    return ip_part, prefix
 
 
 def compute_from_cidr(cidr_str: str) -> dict:
@@ -692,7 +767,7 @@ def main(argv=None) -> int:
 
     args = parser.parse_args(argv)
 
-    have_addr = bool(args.address)
+    have_addr = bool(args.address and args.address.strip())
     headless = is_headless_linux()
 
     # Conditions for CLI: there is an address OR CLI is forced OR headless environment
@@ -708,6 +783,10 @@ def main(argv=None) -> int:
             else:
                 print_result_stdout(res)
             return 0
+        except ValueError as e:
+            # Log validation errors to stderr only
+            logger.error(f"Validation error: {str(e)}")
+            return 1
         except Exception as e:
             logger.error(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
             return 1
