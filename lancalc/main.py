@@ -597,6 +597,17 @@ if GUI_AVAILABLE:
                 self.add_output_field(main_layout, "Hostmax", self.hostmax_output)
                 self.add_output_field(main_layout, "Hosts", self.hosts_output)
 
+                # Add warning/status label for special ranges
+                self.warning_label = QLabel("")
+                self.warning_label.setWordWrap(True)
+                self.warning_label.setAlignment(Qt.AlignCenter)
+                warning_font = QFont('Ubuntu', 11)
+                if not warning_font.exactMatch():
+                    warning_font = QFont('Arial', 11)
+                self.warning_label.setFont(warning_font)
+                self.warning_label.setVisible(False)  # Hidden by default
+                main_layout.addWidget(self.warning_label)
+
                 self.link_label = QLabel(f'<a href="https://github.com/lancalc/lancalc">LanCalc {VERSION}</a>')
                 self.link_label.setOpenExternalLinks(True)
                 self.link_label.setAlignment(Qt.AlignCenter)
@@ -774,6 +785,44 @@ if GUI_AVAILABLE:
                 self.hostmin_output.setText(result["Hostmin"])
                 self.hostmax_output.setText(result["Hostmax"])
                 self.hosts_output.setText(result["Hosts"])
+                
+                # Handle special range warnings
+                range_type = result.get("range_type", "unicast")
+                advisory = result.get("advisory", "")
+                
+                if range_type != "unicast" and advisory:
+                    # Show warning for special ranges
+                    self.warning_label.setText(f"⚠️ {advisory}")
+                    self.warning_label.setStyleSheet("""
+                        QLabel { 
+                            background-color: #fff3cd; 
+                            border: 1px solid #ffeaa7; 
+                            border-radius: 5px; 
+                            padding: 8px; 
+                            color: #856404; 
+                        }
+                    """)
+                    self.warning_label.setVisible(True)
+                    
+                    # Add tooltips to the N/A fields
+                    tooltip_text = f"Not applicable for {range_type} addresses. {advisory}"
+                    if result["Hostmin"] == "N/A":
+                        self.hostmin_output.setToolTip(tooltip_text)
+                    if result["Hostmax"] == "N/A":
+                        self.hostmax_output.setToolTip(tooltip_text)
+                    if result["Hosts"] == "N/A":
+                        self.hosts_output.setToolTip(tooltip_text)
+                    if result["Broadcast"] == "N/A":
+                        self.broadcast_output.setToolTip(tooltip_text)
+                else:
+                    # Hide warning for normal unicast ranges
+                    self.warning_label.setVisible(False)
+                    # Clear tooltips
+                    self.hostmin_output.setToolTip("")
+                    self.hostmax_output.setToolTip("")
+                    self.hosts_output.setToolTip("")
+                    self.broadcast_output.setToolTip("")
+                
                 self.ip_input.setStyleSheet("color: black;")
             except Exception as e:
                 logger.error(f"Unexpected error in network calculation: {type(e).__name__} {str(e)}\n{traceback.format_exc()}")

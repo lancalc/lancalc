@@ -211,6 +211,72 @@ def test_validate_cidr():
 
 
 @pytest.mark.skipif(is_ci_environment(), reason="GUI tests skipped in CI")
+def test_special_range_gui_warnings(app):
+    """Test GUI warnings for special IPv4 ranges"""
+    # Test loopback address
+    app.ip_input.setText("127.0.0.1")
+    app.network_selector.setCurrentIndex(8)  # /8
+    app.calculate_network()
+    
+    assert app.network_output.text() == "127.0.0.0"
+    assert app.hostmin_output.text() == "N/A"
+    assert app.hostmax_output.text() == "N/A"
+    assert app.hosts_output.text() == "N/A"
+    # Check warning content instead of visibility (offscreen rendering issue)
+    assert "RFC 3330" in app.warning_label.text()
+    assert "⚠️" in app.warning_label.text()
+    assert not app.warning_label.isHidden()  # isHidden should be False when shown
+    
+    # Test multicast address
+    app.ip_input.setText("224.0.0.1")
+    app.network_selector.setCurrentIndex(4)  # /4
+    app.calculate_network()
+    
+    assert app.network_output.text() == "224.0.0.0"
+    assert app.hostmin_output.text() == "N/A"
+    assert app.hostmax_output.text() == "N/A"
+    assert app.hosts_output.text() == "N/A"
+    assert "RFC 3171" in app.warning_label.text()
+    assert "multicast" in app.warning_label.text().lower()
+    assert not app.warning_label.isHidden()
+    
+    # Test normal unicast address - warning should be hidden
+    app.ip_input.setText("192.168.1.1")
+    app.network_selector.setCurrentIndex(24)  # /24
+    app.calculate_network()
+    
+    assert app.network_output.text() == "192.168.1.0"
+    assert app.hostmin_output.text() == "192.168.1.1"
+    assert app.hostmax_output.text() == "192.168.1.254"
+    assert app.hosts_output.text() == "254"
+    # For normal addresses, warning should be hidden
+    assert app.warning_label.isHidden() is True
+
+
+@pytest.mark.skipif(is_ci_environment(), reason="GUI tests skipped in CI")
+def test_special_range_tooltips(app):
+    """Test tooltips for N/A fields in special ranges"""
+    # Test link-local address
+    app.ip_input.setText("169.254.1.1")
+    app.network_selector.setCurrentIndex(16)  # /16
+    app.calculate_network()
+    
+    assert app.hostmin_output.text() == "N/A"
+    assert app.hostmax_output.text() == "N/A"
+    assert "link_local" in app.hostmin_output.toolTip()
+    assert "RFC 3927" in app.hostmin_output.toolTip()
+    
+    # Test normal address - tooltips should be cleared
+    app.ip_input.setText("10.0.0.1")
+    app.network_selector.setCurrentIndex(8)  # /8
+    app.calculate_network()
+    
+    assert app.hostmin_output.text() != "N/A"
+    assert app.hostmin_output.toolTip() == ""
+    assert app.hostmax_output.toolTip() == ""
+
+
+@pytest.mark.skipif(is_ci_environment(), reason="GUI tests skipped in CI")
 def test_error_handling_in_gui(app):
     """Test error handling in GUI"""
     # Test with invalid IP
