@@ -325,11 +325,44 @@ def test_cli_json_output():
     assert "Hostmin" in json_data
     assert "Hostmax" in json_data
     assert "Hosts" in json_data
+    assert "range_type" in json_data
+    assert "advisory" in json_data
 
     # Verify values
     assert json_data["Network"] == "192.168.1.0"
     assert json_data["Prefix"] == "/24"
     assert json_data["Netmask"] == "255.255.255.0"
+    assert json_data["range_type"] == "unicast"
+    assert json_data["advisory"] == ""
+
+
+def test_cli_json_output_special_ranges():
+    """Test CLI JSON output for special ranges"""
+    test_cases = [
+        ("127.0.0.1/8", "loopback", "RFC 3330"),
+        ("169.254.1.1/16", "link_local", "RFC 3927"),
+        ("224.0.0.1/4", "multicast", "RFC 3171"),
+        ("0.0.0.1/8", "unspecified", "RFC 1122"),
+        ("255.255.255.255/32", "broadcast", "RFC 919"),
+    ]
+    
+    for cidr, expected_type, expected_rfc in test_cases:
+        result = subprocess.run(
+            [sys.executable, "-m", "lancalc.main", cidr, "--json"],
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd()
+        )
+        
+        assert result.returncode == 0
+        json_data = json.loads(result.stdout.strip())
+        
+        # Check that special ranges have N/A for host fields
+        assert json_data["range_type"] == expected_type
+        assert expected_rfc in json_data["advisory"]
+        assert json_data["Hostmin"] == "N/A"
+        assert json_data["Hostmax"] == "N/A"
+        assert json_data["Hosts"] == "N/A"
 
 
 def test_cli_text_output():
@@ -547,6 +580,126 @@ class TestEdgeCases:
             for field in required_fields:
                 assert field in result
                 assert result[field] != ""
+
+
+class TestSpecialRanges:
+    """Test special IPv4 range classification and handling."""
+
+    def test_loopback_range(self):
+        """Test loopback address range (127/8)."""
+        result = compute("127.0.0.1", 8)
+        assert result["Network"] == "127.0.0.0"
+        assert result["Prefix"] == "/8"
+        assert result["Netmask"] == "255.0.0.0"
+        assert result["Broadcast"] == "N/A"
+        assert result["Hostmin"] == "N/A"
+        assert result["Hostmax"] == "N/A"
+        assert result["Hosts"] == "N/A"
+        assert result["range_type"] == "loopback"
+        assert "RFC 3330" in result["advisory"]
+        assert "not routable" in result["advisory"]
+
+    def test_link_local_range(self):
+        """Test link-local address range (169.254/16)."""
+        result = compute("169.254.1.1", 16)
+        assert result["Network"] == "169.254.0.0"
+        assert result["Prefix"] == "/16"
+        assert result["Netmask"] == "255.255.0.0"
+        assert result["Broadcast"] == "N/A"
+        assert result["Hostmin"] == "N/A"
+        assert result["Hostmax"] == "N/A"
+        assert result["Hosts"] == "N/A"
+        assert result["range_type"] == "link_local"
+        assert "RFC 3927" in result["advisory"]
+        assert "not routable" in result["advisory"]
+
+    def test_multicast_range(self):
+        """Test multicast address range (224/4)."""
+        result = compute("224.0.0.1", 4)
+        assert result["Network"] == "224.0.0.0"
+        assert result["Prefix"] == "/4"
+        assert result["Netmask"] == "240.0.0.0"
+        assert result["Broadcast"] == "N/A"
+        assert result["Hostmin"] == "N/A"
+        assert result["Hostmax"] == "N/A"
+        assert result["Hosts"] == "N/A"
+        assert result["range_type"] == "multicast"
+        assert "RFC 3171" in result["advisory"]
+        assert "not for host addressing" in result["advisory"]
+
+    def test_unspecified_range(self):
+        """Test unspecified address range (0.0.0.0/8 but not /0)."""
+        result = compute("0.0.0.1", 8)
+        assert result["Network"] == "0.0.0.0"
+        assert result["Prefix"] == "/8"
+        assert result["Netmask"] == "255.0.0.0"
+        assert result["Broadcast"] == "N/A"
+        assert result["Hostmin"] == "N/A"
+        assert result["Hostmax"] == "N/A"
+        assert result["Hosts"] == "N/A"
+        assert result["range_type"] == "unspecified"
+        assert "RFC 1122" in result["advisory"]
+        assert "not for host addressing" in result["advisory"]
+
+    def test_broadcast_address(self):
+        """Test limited broadcast address (255.255.255.255/32)."""
+        result = compute("255.255.255.255", 32)
+        assert result["Network"] == "255.255.255.255"
+        assert result["Prefix"] == "/32"
+        assert result["Netmask"] == "255.255.255.255"
+        assert result["Broadcast"] == "255.255.255.255"  # Broadcast keeps its value
+        assert result["Hostmin"] == "N/A"
+        assert result["Hostmax"] == "N/A"
+        assert result["Hosts"] == "N/A"
+        assert result["range_type"] == "broadcast"
+        assert "RFC 919" in result["advisory"]
+        assert "not for host addressing" in result["advisory"]
+
+    def test_default_route_not_special(self):
+        """Test that default route (0.0.0.0/0) is not treated as special."""
+        result = compute("0.0.0.0", 0)
+        assert result["Network"] == "0.0.0.0"
+        assert result["Broadcast"] == "255.255.255.255"
+        assert result["Hostmin"] == "0.0.0.1"
+        assert result["Hostmax"] == "255.255.255.254"
+        assert result["Hosts"] == "4294967294"
+        assert result["range_type"] == "unicast"
+        assert result["advisory"] == ""
+
+    def test_normal_unicast_unchanged(self):
+        """Test that normal unicast addresses are unchanged."""
+        test_cases = [
+            ("192.168.1.1", 24),
+            ("10.0.0.1", 8),
+            ("172.16.1.1", 16),
+            ("8.8.8.8", 32),
+        ]
+        
+        for ip, prefix in test_cases:
+            result = compute(ip, prefix)
+            assert result["range_type"] == "unicast"
+            assert result["advisory"] == ""
+            # Should have normal host calculations
+            assert "N/A" not in result["Hostmin"]
+            assert "N/A" not in result["Hostmax"]
+            assert "N/A" not in result["Hosts"]
+
+    def test_special_range_edge_cases(self):
+        """Test edge cases for special ranges."""
+        # Test various prefixes within special ranges
+        special_cases = [
+            ("127.1.1.1", 24, "loopback"),  # /24 within loopback
+            ("169.254.1.1", 24, "link_local"),  # /24 within link-local
+            ("224.1.1.1", 8, "multicast"),  # /8 within multicast
+            ("239.255.255.255", 32, "multicast"),  # Last multicast address
+        ]
+        
+        for ip, prefix, expected_type in special_cases:
+            result = compute(ip, prefix)
+            assert result["range_type"] == expected_type
+            assert result["Hostmin"] == "N/A"
+            assert result["Hostmax"] == "N/A"
+            assert result["Hosts"] == "N/A"
 
 
 class TestGoldenCases:

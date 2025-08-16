@@ -267,6 +267,48 @@ def validate_prefix(prefix_str: str) -> int:
     return p
 
 
+def classify_ipv4_range(network: ipaddress.IPv4Network) -> tuple[str, str]:
+    """
+    Classify IPv4 network range and return range type and advisory message.
+    
+    Args:
+        network: IPv4Network object to classify
+    
+    Returns:
+        Tuple of (range_type, advisory_message)
+        
+    Range types:
+        - unicast: Standard unicast address
+        - loopback: Loopback address (127.0.0.0/8)
+        - link_local: Link-local address (169.254.0.0/16)
+        - multicast: Multicast address (224.0.0.0/4)
+        - unspecified: Unspecified address (0.0.0.0/8 but not 0.0.0.0/0)
+        - broadcast: Limited broadcast (255.255.255.255/32)
+    """
+    # Get the network address for classification
+    net_addr = network.network_address
+    
+    # Check for specific special ranges
+    if net_addr in ipaddress.IPv4Network('127.0.0.0/8'):
+        return ('loopback', 'Loopback addresses (RFC 3330) - not routable on the Internet')
+    elif net_addr in ipaddress.IPv4Network('169.254.0.0/16'):
+        return ('link_local', 'Link-local addresses (RFC 3927) - not routable')
+    elif net_addr in ipaddress.IPv4Network('224.0.0.0/4'):
+        return ('multicast', 'Multicast addresses (RFC 3171) - not for host addressing')
+    elif net_addr in ipaddress.IPv4Network('0.0.0.0/8') and network.prefixlen > 0:
+        # Only classify as unspecified if it's not the default route (0.0.0.0/0)
+        return ('unspecified', 'Unspecified addresses (RFC 1122) - not for host addressing')
+    elif network.network_address == ipaddress.IPv4Address('255.255.255.255'):
+        return ('broadcast', 'Limited broadcast address (RFC 919) - not for host addressing')
+    else:
+        return ('unicast', '')
+
+
+def is_special_range(range_type: str) -> bool:
+    """Check if the range type is a special (non-unicast) range."""
+    return range_type != 'unicast'
+
+
 def compute(ip: str, prefix: int) -> dict:
     """
     Core network computation function.
@@ -281,9 +323,11 @@ def compute(ip: str, prefix: int) -> dict:
         - Prefix: CIDR prefix with slash
         - Netmask: subnet mask
         - Broadcast: broadcast address
-        - Hostmin: first usable host
-        - Hostmax: last usable host
+        - Hostmin: first usable host (or N/A for special ranges)
+        - Hostmax: last usable host (or N/A for special ranges)
         - Hosts: number of usable hosts
+        - range_type: type of IP range (unicast, loopback, etc.)
+        - advisory: advisory message for special ranges
 
     Raises:
         ValueError: if IP or prefix is invalid
@@ -295,25 +339,43 @@ def compute(ip: str, prefix: int) -> dict:
     # Create network object
     net = ipaddress.IPv4Network(f"{ip}/{prefix}", strict=False)
     total = net.num_addresses
+    
+    # Classify the range
+    range_type, advisory = classify_ipv4_range(net)
+    is_special = is_special_range(range_type)
 
     # Calculate host range
-    if total > 2:
+    if is_special:
+        # For special ranges, mark host addresses as N/A
+        hostmin_str = "N/A"
+        hostmax_str = "N/A"
+        hosts_str = "N/A"
+    elif total > 2:
         hostmin = ipaddress.IPv4Address(int(net.network_address) + 1)
         hostmax = ipaddress.IPv4Address(int(net.broadcast_address) - 1)
+        hostmin_str = str(hostmin)
+        hostmax_str = str(hostmax)
         hosts_str = str(total - 2)
     else:
-        hostmin = net.network_address
-        hostmax = net.broadcast_address
+        hostmin_str = str(net.network_address)
+        hostmax_str = str(net.broadcast_address)
         hosts_str = f"{total}*"
+
+    # For special ranges, also mark broadcast as N/A if it's not meaningful
+    broadcast_str = str(net.broadcast_address)
+    if is_special and range_type != 'broadcast':
+        broadcast_str = "N/A"
 
     return {
         "Network": str(net.network_address),
         "Prefix": f"/{prefix}",
         "Netmask": str(net.netmask),
-        "Broadcast": str(net.broadcast_address),
-        "Hostmin": str(hostmin),
-        "Hostmax": str(hostmax),
+        "Broadcast": broadcast_str,
+        "Hostmin": hostmin_str,
+        "Hostmax": hostmax_str,
         "Hosts": hosts_str,
+        "range_type": range_type,
+        "advisory": advisory,
     }
 
 
