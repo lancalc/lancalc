@@ -100,7 +100,9 @@ Hosts: 254
   "Broadcast": "192.168.1.255",
   "Hostmin": "192.168.1.1",
   "Hostmax": "192.168.1.254",
-  "Hosts": "254"
+  "Hosts": "254",
+  "range_type": "unicast",
+  "advisory": ""
 }
 ```
 
@@ -109,6 +111,71 @@ Hosts: 254
 - **/31 networks**: Show `2*` in Hosts field - both addresses are usable (RFC 3021)
 - **/32 networks**: Show `1*` in Hosts field - single host network
 - The asterisk (*) indicates special network types where all addresses are usable
+
+## Special IPv4 Ranges
+
+LanCalc automatically detects and handles special IPv4 address ranges according to RFC specifications. For these ranges, the GUI displays warning messages and host-related fields show "N/A" since they're not used for standard host addressing.
+
+### Supported Special Ranges
+
+| Range | Type | RFC | Description |
+|-------|------|-----|-------------|
+| **127.0.0.0/8** | Loopback | RFC 3330 | Loopback addresses - not routable on the Internet |
+| **169.254.0.0/16** | Link-local | RFC 3927 | Link-local addresses - not routable |
+| **224.0.0.0/4** | Multicast | RFC 3171 | Multicast addresses - not for host addressing |
+| **0.0.0.0/8** | Unspecified | RFC 1122 | Unspecified addresses - not for host addressing |
+| **255.255.255.255/32** | Broadcast | RFC 919 | Limited broadcast address - not for host addressing |
+
+### Special Range Behavior
+
+When you enter an address from a special range:
+
+**GUI Mode:**
+- Warning message appears with RFC reference
+- Warning icon (⚠️) with colored background
+- Host fields (Hostmin, Hostmax, Hosts) show "N/A"
+- Tooltips explain why fields are not applicable
+
+**CLI Text Mode:**
+```bash
+lancalc 127.0.0.1/8
+```
+```
+Network: 127.0.0.0
+Prefix: /8
+Netmask: 255.0.0.0
+Broadcast: N/A
+Hostmin: N/A
+Hostmax: N/A
+Hosts: N/A
+```
+
+**CLI JSON Mode:**
+```bash
+lancalc 224.0.0.1/4 --json
+```
+```json
+{
+  "Network": "224.0.0.0",
+  "Prefix": "/4",
+  "Netmask": "240.0.0.0",
+  "Broadcast": "N/A",
+  "Hostmin": "N/A",
+  "Hostmax": "N/A",
+  "Hosts": "N/A",
+  "range_type": "multicast",
+  "advisory": "Multicast addresses (RFC 3171) - not for host addressing"
+}
+```
+
+### New JSON Fields
+
+The JSON output now includes additional fields for special ranges:
+
+- **`range_type`**: One of "unicast", "loopback", "link_local", "multicast", "unspecified", "broadcast"
+- **`advisory`**: Human-readable explanation with RFC reference (empty for unicast)
+
+These fields are always present, making the JSON output format consistent regardless of address type.
 
 ### Uninstall
 
