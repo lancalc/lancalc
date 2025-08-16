@@ -267,46 +267,45 @@ def validate_prefix(prefix_str: str) -> int:
     return p
 
 
-def classify_ipv4_range(network: ipaddress.IPv4Network) -> tuple[str, str]:
+def classify_ipv4_range(network: ipaddress.IPv4Network) -> str:
     """
-    Classify IPv4 network range and return range type and advisory message.
+    Classify IPv4 network range and return message for special ranges.
     
     Args:
         network: IPv4Network object to classify
     
     Returns:
-        Tuple of (range_type, advisory_message)
+        Message string for special ranges, empty string for unicast
         
-    Range types:
-        - unicast: Standard unicast address
-        - loopback: Loopback address (127.0.0.0/8)
-        - link_local: Link-local address (169.254.0.0/16)
-        - multicast: Multicast address (224.0.0.0/4)
-        - unspecified: Unspecified address (0.0.0.0/8 but not 0.0.0.0/0)
-        - broadcast: Limited broadcast (255.255.255.255/32)
+    Special ranges:
+        - loopback: Loopback address (127.0.0.0/8) → "Loopback - RFC3330"
+        - link_local: Link-local address (169.254.0.0/16) → "Link-local - RFC3927"
+        - multicast: Multicast address (224.0.0.0/4) → "Multicast - RFC5771"
+        - unspecified: Unspecified address (0.0.0.0/8 but not 0.0.0.0/0) → "Unspecified - RFC1122"
+        - broadcast: Limited broadcast (255.255.255.255/32) → "Broadcast - RFC919"
     """
     # Get the network address for classification
     net_addr = network.network_address
     
     # Check for specific special ranges
     if net_addr in ipaddress.IPv4Network('127.0.0.0/8'):
-        return ('loopback', 'Loopback addresses (RFC 3330) - not routable on the Internet')
+        return 'Loopback - RFC3330'
     elif net_addr in ipaddress.IPv4Network('169.254.0.0/16'):
-        return ('link_local', 'Link-local addresses (RFC 3927) - not routable')
+        return 'Link-local - RFC3927'
     elif net_addr in ipaddress.IPv4Network('224.0.0.0/4'):
-        return ('multicast', 'Multicast addresses (RFC 3171) - not for host addressing')
+        return 'Multicast - RFC5771'
     elif net_addr in ipaddress.IPv4Network('0.0.0.0/8') and network.prefixlen > 0:
         # Only classify as unspecified if it's not the default route (0.0.0.0/0)
-        return ('unspecified', 'Unspecified addresses (RFC 1122) - not for host addressing')
+        return 'Unspecified - RFC1122'
     elif network.network_address == ipaddress.IPv4Address('255.255.255.255'):
-        return ('broadcast', 'Limited broadcast address (RFC 919) - not for host addressing')
+        return 'Broadcast - RFC919'
     else:
-        return ('unicast', '')
+        return ''
 
 
-def is_special_range(range_type: str) -> bool:
-    """Check if the range type is a special (non-unicast) range."""
-    return range_type != 'unicast'
+def is_special_range(message: str) -> bool:
+    """Check if the message indicates a special range."""
+    return bool(message.strip())
 
 
 def compute(ip: str, prefix: int) -> dict:
@@ -322,12 +321,11 @@ def compute(ip: str, prefix: int) -> dict:
         - Network: network address
         - Prefix: CIDR prefix with slash
         - Netmask: subnet mask
-        - Broadcast: broadcast address
-        - Hostmin: first usable host (or N/A for special ranges)
-        - Hostmax: last usable host (or N/A for special ranges)
-        - Hosts: number of usable hosts
-        - range_type: type of IP range (unicast, loopback, etc.)
-        - advisory: advisory message for special ranges
+        - Broadcast: broadcast address (or "-*" for special ranges)
+        - Hostmin: first usable host (or "-*" for special ranges)
+        - Hostmax: last usable host (or "-*" for special ranges)
+        - Hosts: number of usable hosts (or "-*" for special ranges)
+        - message: message for special ranges (empty for unicast)
 
     Raises:
         ValueError: if IP or prefix is invalid
@@ -341,30 +339,28 @@ def compute(ip: str, prefix: int) -> dict:
     total = net.num_addresses
     
     # Classify the range
-    range_type, advisory = classify_ipv4_range(net)
-    is_special = is_special_range(range_type)
+    message = classify_ipv4_range(net)
+    is_special = is_special_range(message)
 
     # Calculate host range
     if is_special:
-        # For special ranges, mark host addresses as N/A
-        hostmin_str = "N/A"
-        hostmax_str = "N/A"
-        hosts_str = "N/A"
+        # For special ranges, mark host addresses as "-*"
+        hostmin_str = "-*"
+        hostmax_str = "-*"
+        hosts_str = "-*"
+        broadcast_str = "-*"
     elif total > 2:
         hostmin = ipaddress.IPv4Address(int(net.network_address) + 1)
         hostmax = ipaddress.IPv4Address(int(net.broadcast_address) - 1)
         hostmin_str = str(hostmin)
         hostmax_str = str(hostmax)
         hosts_str = str(total - 2)
+        broadcast_str = str(net.broadcast_address)
     else:
         hostmin_str = str(net.network_address)
         hostmax_str = str(net.broadcast_address)
         hosts_str = f"{total}*"
-
-    # For special ranges, also mark broadcast as N/A if it's not meaningful
-    broadcast_str = str(net.broadcast_address)
-    if is_special and range_type != 'broadcast':
-        broadcast_str = "N/A"
+        broadcast_str = str(net.broadcast_address)
 
     return {
         "Network": str(net.network_address),
@@ -374,8 +370,7 @@ def compute(ip: str, prefix: int) -> dict:
         "Hostmin": hostmin_str,
         "Hostmax": hostmax_str,
         "Hosts": hosts_str,
-        "range_type": range_type,
-        "advisory": advisory,
+        "message": message,
     }
 
 
@@ -477,6 +472,10 @@ def print_result_stdout(res: dict) -> None:
     """Print only the result (stdout), without extra logs."""
     for k in ("Network", "Prefix", "Netmask", "Broadcast", "Hostmin", "Hostmax", "Hosts"):
         print(f"{k}: {res[k]}")
+    
+    # Print message if present for special ranges
+    if res.get("message"):
+        print(f"Message: {res['message']}")
 
 
 def print_result_json(res: dict) -> None:
@@ -597,25 +596,15 @@ if GUI_AVAILABLE:
                 self.add_output_field(main_layout, "Hostmax", self.hostmax_output)
                 self.add_output_field(main_layout, "Hosts", self.hosts_output)
 
-                # Add warning/status label for special ranges
-                self.warning_label = QLabel("")
-                self.warning_label.setWordWrap(True)
-                self.warning_label.setAlignment(Qt.AlignCenter)
-                warning_font = QFont('Ubuntu', 11)
-                if not warning_font.exactMatch():
-                    warning_font = QFont('Arial', 11)
-                self.warning_label.setFont(warning_font)
-                self.warning_label.setVisible(False)  # Hidden by default
-                main_layout.addWidget(self.warning_label)
-
-                self.link_label = QLabel(f'<a href="https://github.com/lancalc/lancalc">LanCalc {VERSION}</a>')
-                self.link_label.setOpenExternalLinks(True)
-                self.link_label.setAlignment(Qt.AlignCenter)
-                link_font = QFont('Ubuntu', 11)  # 11
-                if not link_font.exactMatch():
-                    link_font = QFont('Arial', 11)
-                self.link_label.setFont(link_font)
-                main_layout.addWidget(self.link_label)
+                # Status bar at bottom - shows version or special range message
+                self.status_label = QLabel(f'<a href="https://github.com/lancalc/lancalc">LanCalc {VERSION}</a>')
+                self.status_label.setOpenExternalLinks(True)
+                self.status_label.setAlignment(Qt.AlignCenter)
+                status_font = QFont('Ubuntu', 11)  # 11
+                if not status_font.exactMatch():
+                    status_font = QFont('Arial', 11)
+                self.status_label.setFont(status_font)
+                main_layout.addWidget(self.status_label)
 
                 self.setLayout(main_layout)
             except Exception as e:
@@ -786,42 +775,17 @@ if GUI_AVAILABLE:
                 self.hostmax_output.setText(result["Hostmax"])
                 self.hosts_output.setText(result["Hosts"])
                 
-                # Handle special range warnings
-                range_type = result.get("range_type", "unicast")
-                advisory = result.get("advisory", "")
+                # Handle special range messages in status bar
+                message = result.get("message", "")
                 
-                if range_type != "unicast" and advisory:
-                    # Show warning for special ranges
-                    self.warning_label.setText(f"⚠️ {advisory}")
-                    self.warning_label.setStyleSheet("""
-                        QLabel { 
-                            background-color: #fff3cd; 
-                            border: 1px solid #ffeaa7; 
-                            border-radius: 5px; 
-                            padding: 8px; 
-                            color: #856404; 
-                        }
-                    """)
-                    self.warning_label.setVisible(True)
-                    
-                    # Add tooltips to the N/A fields
-                    tooltip_text = f"Not applicable for {range_type} addresses. {advisory}"
-                    if result["Hostmin"] == "N/A":
-                        self.hostmin_output.setToolTip(tooltip_text)
-                    if result["Hostmax"] == "N/A":
-                        self.hostmax_output.setToolTip(tooltip_text)
-                    if result["Hosts"] == "N/A":
-                        self.hosts_output.setToolTip(tooltip_text)
-                    if result["Broadcast"] == "N/A":
-                        self.broadcast_output.setToolTip(tooltip_text)
+                if message:
+                    # Show message for special ranges
+                    self.status_label.setText(message)
+                    self.status_label.setOpenExternalLinks(False)  # No link for messages
                 else:
-                    # Hide warning for normal unicast ranges
-                    self.warning_label.setVisible(False)
-                    # Clear tooltips
-                    self.hostmin_output.setToolTip("")
-                    self.hostmax_output.setToolTip("")
-                    self.hosts_output.setToolTip("")
-                    self.broadcast_output.setToolTip("")
+                    # Show version link for normal unicast ranges
+                    self.status_label.setText(f'<a href="https://github.com/lancalc/lancalc">LanCalc {VERSION}</a>')
+                    self.status_label.setOpenExternalLinks(True)
                 
                 self.ip_input.setStyleSheet("color: black;")
             except Exception as e:

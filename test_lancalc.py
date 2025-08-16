@@ -211,21 +211,20 @@ def test_validate_cidr():
 
 
 @pytest.mark.skipif(is_ci_environment(), reason="GUI tests skipped in CI")
-def test_special_range_gui_warnings(app):
-    """Test GUI warnings for special IPv4 ranges"""
+def test_special_range_gui_status_bar(app):
+    """Test GUI status bar for special IPv4 ranges"""
     # Test loopback address
     app.ip_input.setText("127.0.0.1")
     app.network_selector.setCurrentIndex(8)  # /8
     app.calculate_network()
     
     assert app.network_output.text() == "127.0.0.0"
-    assert app.hostmin_output.text() == "N/A"
-    assert app.hostmax_output.text() == "N/A"
-    assert app.hosts_output.text() == "N/A"
-    # Check warning content instead of visibility (offscreen rendering issue)
-    assert "RFC 3330" in app.warning_label.text()
-    assert "⚠️" in app.warning_label.text()
-    assert not app.warning_label.isHidden()  # isHidden should be False when shown
+    assert app.hostmin_output.text() == "-*"
+    assert app.hostmax_output.text() == "-*"
+    assert app.hosts_output.text() == "-*"
+    assert app.broadcast_output.text() == "-*"
+    # Check status bar shows message
+    assert "Loopback - RFC3330" in app.status_label.text()
     
     # Test multicast address
     app.ip_input.setText("224.0.0.1")
@@ -233,14 +232,13 @@ def test_special_range_gui_warnings(app):
     app.calculate_network()
     
     assert app.network_output.text() == "224.0.0.0"
-    assert app.hostmin_output.text() == "N/A"
-    assert app.hostmax_output.text() == "N/A"
-    assert app.hosts_output.text() == "N/A"
-    assert "RFC 3171" in app.warning_label.text()
-    assert "multicast" in app.warning_label.text().lower()
-    assert not app.warning_label.isHidden()
+    assert app.hostmin_output.text() == "-*"
+    assert app.hostmax_output.text() == "-*"
+    assert app.hosts_output.text() == "-*"
+    assert app.broadcast_output.text() == "-*"
+    assert "Multicast - RFC5771" in app.status_label.text()
     
-    # Test normal unicast address - warning should be hidden
+    # Test normal unicast address - status bar should show version
     app.ip_input.setText("192.168.1.1")
     app.network_selector.setCurrentIndex(24)  # /24
     app.calculate_network()
@@ -249,31 +247,9 @@ def test_special_range_gui_warnings(app):
     assert app.hostmin_output.text() == "192.168.1.1"
     assert app.hostmax_output.text() == "192.168.1.254"
     assert app.hosts_output.text() == "254"
-    # For normal addresses, warning should be hidden
-    assert app.warning_label.isHidden() is True
-
-
-@pytest.mark.skipif(is_ci_environment(), reason="GUI tests skipped in CI")
-def test_special_range_tooltips(app):
-    """Test tooltips for N/A fields in special ranges"""
-    # Test link-local address
-    app.ip_input.setText("169.254.1.1")
-    app.network_selector.setCurrentIndex(16)  # /16
-    app.calculate_network()
-    
-    assert app.hostmin_output.text() == "N/A"
-    assert app.hostmax_output.text() == "N/A"
-    assert "link_local" in app.hostmin_output.toolTip()
-    assert "RFC 3927" in app.hostmin_output.toolTip()
-    
-    # Test normal address - tooltips should be cleared
-    app.ip_input.setText("10.0.0.1")
-    app.network_selector.setCurrentIndex(8)  # /8
-    app.calculate_network()
-    
-    assert app.hostmin_output.text() != "N/A"
-    assert app.hostmin_output.toolTip() == ""
-    assert app.hostmax_output.toolTip() == ""
+    # For normal addresses, status bar should show version link
+    assert "LanCalc" in app.status_label.text()
+    assert "github.com" in app.status_label.text()
 
 
 @pytest.mark.skipif(is_ci_environment(), reason="GUI tests skipped in CI")
@@ -391,28 +367,26 @@ def test_cli_json_output():
     assert "Hostmin" in json_data
     assert "Hostmax" in json_data
     assert "Hosts" in json_data
-    assert "range_type" in json_data
-    assert "advisory" in json_data
+    assert "message" in json_data
 
     # Verify values
     assert json_data["Network"] == "192.168.1.0"
     assert json_data["Prefix"] == "/24"
     assert json_data["Netmask"] == "255.255.255.0"
-    assert json_data["range_type"] == "unicast"
-    assert json_data["advisory"] == ""
+    assert json_data["message"] == ""
 
 
 def test_cli_json_output_special_ranges():
     """Test CLI JSON output for special ranges"""
     test_cases = [
-        ("127.0.0.1/8", "loopback", "RFC 3330"),
-        ("169.254.1.1/16", "link_local", "RFC 3927"),
-        ("224.0.0.1/4", "multicast", "RFC 3171"),
-        ("0.0.0.1/8", "unspecified", "RFC 1122"),
-        ("255.255.255.255/32", "broadcast", "RFC 919"),
+        ("127.0.0.1/8", "Loopback - RFC3330"),
+        ("169.254.1.1/16", "Link-local - RFC3927"),
+        ("224.0.0.1/4", "Multicast - RFC5771"),
+        ("0.0.0.1/8", "Unspecified - RFC1122"),
+        ("255.255.255.255/32", "Broadcast - RFC919"),
     ]
     
-    for cidr, expected_type, expected_rfc in test_cases:
+    for cidr, expected_message in test_cases:
         result = subprocess.run(
             [sys.executable, "-m", "lancalc.main", cidr, "--json"],
             capture_output=True,
@@ -423,12 +397,12 @@ def test_cli_json_output_special_ranges():
         assert result.returncode == 0
         json_data = json.loads(result.stdout.strip())
         
-        # Check that special ranges have N/A for host fields
-        assert json_data["range_type"] == expected_type
-        assert expected_rfc in json_data["advisory"]
-        assert json_data["Hostmin"] == "N/A"
-        assert json_data["Hostmax"] == "N/A"
-        assert json_data["Hosts"] == "N/A"
+        # Check that special ranges have "-*" for host fields
+        assert json_data["message"] == expected_message
+        assert json_data["Hostmin"] == "-*"
+        assert json_data["Hostmax"] == "-*"
+        assert json_data["Hosts"] == "-*"
+        assert json_data["Broadcast"] == "-*"
 
 
 def test_cli_text_output():
@@ -657,13 +631,11 @@ class TestSpecialRanges:
         assert result["Network"] == "127.0.0.0"
         assert result["Prefix"] == "/8"
         assert result["Netmask"] == "255.0.0.0"
-        assert result["Broadcast"] == "N/A"
-        assert result["Hostmin"] == "N/A"
-        assert result["Hostmax"] == "N/A"
-        assert result["Hosts"] == "N/A"
-        assert result["range_type"] == "loopback"
-        assert "RFC 3330" in result["advisory"]
-        assert "not routable" in result["advisory"]
+        assert result["Broadcast"] == "-*"
+        assert result["Hostmin"] == "-*"
+        assert result["Hostmax"] == "-*"
+        assert result["Hosts"] == "-*"
+        assert result["message"] == "Loopback - RFC3330"
 
     def test_link_local_range(self):
         """Test link-local address range (169.254/16)."""
@@ -671,13 +643,11 @@ class TestSpecialRanges:
         assert result["Network"] == "169.254.0.0"
         assert result["Prefix"] == "/16"
         assert result["Netmask"] == "255.255.0.0"
-        assert result["Broadcast"] == "N/A"
-        assert result["Hostmin"] == "N/A"
-        assert result["Hostmax"] == "N/A"
-        assert result["Hosts"] == "N/A"
-        assert result["range_type"] == "link_local"
-        assert "RFC 3927" in result["advisory"]
-        assert "not routable" in result["advisory"]
+        assert result["Broadcast"] == "-*"
+        assert result["Hostmin"] == "-*"
+        assert result["Hostmax"] == "-*"
+        assert result["Hosts"] == "-*"
+        assert result["message"] == "Link-local - RFC3927"
 
     def test_multicast_range(self):
         """Test multicast address range (224/4)."""
@@ -685,13 +655,11 @@ class TestSpecialRanges:
         assert result["Network"] == "224.0.0.0"
         assert result["Prefix"] == "/4"
         assert result["Netmask"] == "240.0.0.0"
-        assert result["Broadcast"] == "N/A"
-        assert result["Hostmin"] == "N/A"
-        assert result["Hostmax"] == "N/A"
-        assert result["Hosts"] == "N/A"
-        assert result["range_type"] == "multicast"
-        assert "RFC 3171" in result["advisory"]
-        assert "not for host addressing" in result["advisory"]
+        assert result["Broadcast"] == "-*"
+        assert result["Hostmin"] == "-*"
+        assert result["Hostmax"] == "-*"
+        assert result["Hosts"] == "-*"
+        assert result["message"] == "Multicast - RFC5771"
 
     def test_unspecified_range(self):
         """Test unspecified address range (0.0.0.0/8 but not /0)."""
@@ -699,13 +667,11 @@ class TestSpecialRanges:
         assert result["Network"] == "0.0.0.0"
         assert result["Prefix"] == "/8"
         assert result["Netmask"] == "255.0.0.0"
-        assert result["Broadcast"] == "N/A"
-        assert result["Hostmin"] == "N/A"
-        assert result["Hostmax"] == "N/A"
-        assert result["Hosts"] == "N/A"
-        assert result["range_type"] == "unspecified"
-        assert "RFC 1122" in result["advisory"]
-        assert "not for host addressing" in result["advisory"]
+        assert result["Broadcast"] == "-*"
+        assert result["Hostmin"] == "-*"
+        assert result["Hostmax"] == "-*"
+        assert result["Hosts"] == "-*"
+        assert result["message"] == "Unspecified - RFC1122"
 
     def test_broadcast_address(self):
         """Test limited broadcast address (255.255.255.255/32)."""
@@ -713,13 +679,11 @@ class TestSpecialRanges:
         assert result["Network"] == "255.255.255.255"
         assert result["Prefix"] == "/32"
         assert result["Netmask"] == "255.255.255.255"
-        assert result["Broadcast"] == "255.255.255.255"  # Broadcast keeps its value
-        assert result["Hostmin"] == "N/A"
-        assert result["Hostmax"] == "N/A"
-        assert result["Hosts"] == "N/A"
-        assert result["range_type"] == "broadcast"
-        assert "RFC 919" in result["advisory"]
-        assert "not for host addressing" in result["advisory"]
+        assert result["Broadcast"] == "-*"
+        assert result["Hostmin"] == "-*"
+        assert result["Hostmax"] == "-*"
+        assert result["Hosts"] == "-*"
+        assert result["message"] == "Broadcast - RFC919"
 
     def test_default_route_not_special(self):
         """Test that default route (0.0.0.0/0) is not treated as special."""
@@ -729,8 +693,7 @@ class TestSpecialRanges:
         assert result["Hostmin"] == "0.0.0.1"
         assert result["Hostmax"] == "255.255.255.254"
         assert result["Hosts"] == "4294967294"
-        assert result["range_type"] == "unicast"
-        assert result["advisory"] == ""
+        assert result["message"] == ""
 
     def test_normal_unicast_unchanged(self):
         """Test that normal unicast addresses are unchanged."""
@@ -743,29 +706,28 @@ class TestSpecialRanges:
         
         for ip, prefix in test_cases:
             result = compute(ip, prefix)
-            assert result["range_type"] == "unicast"
-            assert result["advisory"] == ""
+            assert result["message"] == ""
             # Should have normal host calculations
-            assert "N/A" not in result["Hostmin"]
-            assert "N/A" not in result["Hostmax"]
-            assert "N/A" not in result["Hosts"]
+            assert "-*" not in result["Hostmin"]
+            assert "-*" not in result["Hostmax"]
+            assert "-*" not in result["Hosts"]
 
     def test_special_range_edge_cases(self):
         """Test edge cases for special ranges."""
         # Test various prefixes within special ranges
         special_cases = [
-            ("127.1.1.1", 24, "loopback"),  # /24 within loopback
-            ("169.254.1.1", 24, "link_local"),  # /24 within link-local
-            ("224.1.1.1", 8, "multicast"),  # /8 within multicast
-            ("239.255.255.255", 32, "multicast"),  # Last multicast address
+            ("127.1.1.1", 24, "Loopback - RFC3330"),  # /24 within loopback
+            ("169.254.1.1", 24, "Link-local - RFC3927"),  # /24 within link-local
+            ("224.1.1.1", 8, "Multicast - RFC5771"),  # /8 within multicast
+            ("239.255.255.255", 32, "Multicast - RFC5771"),  # Last multicast address
         ]
         
-        for ip, prefix, expected_type in special_cases:
+        for ip, prefix, expected_message in special_cases:
             result = compute(ip, prefix)
-            assert result["range_type"] == expected_type
-            assert result["Hostmin"] == "N/A"
-            assert result["Hostmax"] == "N/A"
-            assert result["Hosts"] == "N/A"
+            assert result["message"] == expected_message
+            assert result["Hostmin"] == "-*"
+            assert result["Hostmax"] == "-*"
+            assert result["Hosts"] == "-*"
 
 
 class TestGoldenCases:

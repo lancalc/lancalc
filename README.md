@@ -101,8 +101,7 @@ Hosts: 254
   "Hostmin": "192.168.1.1",
   "Hostmax": "192.168.1.254",
   "Hosts": "254",
-  "range_type": "unicast",
-  "advisory": ""
+  "message": ""
 }
 ```
 
@@ -114,27 +113,21 @@ Hosts: 254
 
 ## Special IPv4 Ranges
 
-LanCalc automatically detects and handles special IPv4 address ranges according to RFC specifications. For these ranges, the GUI displays warning messages and host-related fields show "N/A" since they're not used for standard host addressing.
+LanCalc automatically detects and handles special IPv4 address ranges according to RFC specifications. For these ranges, host-related fields show "-*" and a message field indicates the range type with RFC reference.
 
 ### Supported Special Ranges
 
 | Range | Type | RFC | Description |
 |-------|------|-----|-------------|
-| **127.0.0.0/8** | Loopback | RFC 3330 | Loopback addresses - not routable on the Internet |
-| **169.254.0.0/16** | Link-local | RFC 3927 | Link-local addresses - not routable |
-| **224.0.0.0/4** | Multicast | RFC 3171 | Multicast addresses - not for host addressing |
-| **0.0.0.0/8** | Unspecified | RFC 1122 | Unspecified addresses - not for host addressing |
-| **255.255.255.255/32** | Broadcast | RFC 919 | Limited broadcast address - not for host addressing |
+| **127.0.0.0/8** | Loopback | [RFC 3330](docs/RFC3330_Loopback.md) | Loopback addresses - not routable on the Internet |
+| **169.254.0.0/16** | Link-local | [RFC 3927](docs/RFC3927_LinkLocal.md) | Link-local addresses - not routable |
+| **224.0.0.0/4** | Multicast | [RFC 5771](docs/RFC5771_Multicast.md) | Multicast addresses - not for host addressing |
+| **0.0.0.0/8** | Unspecified | [RFC 1122](docs/RFC1122_Unspecified.md) | Unspecified addresses - not for host addressing |
+| **255.255.255.255/32** | Broadcast | [RFC 919](docs/RFC919_Broadcast.md) | Limited broadcast address - not for host addressing |
 
 ### Special Range Behavior
 
 When you enter an address from a special range:
-
-**GUI Mode:**
-- Warning message appears with RFC reference
-- Warning icon (⚠️) with colored background
-- Host fields (Hostmin, Hostmax, Hosts) show "N/A"
-- Tooltips explain why fields are not applicable
 
 **CLI Text Mode:**
 ```bash
@@ -144,10 +137,11 @@ lancalc 127.0.0.1/8
 Network: 127.0.0.0
 Prefix: /8
 Netmask: 255.0.0.0
-Broadcast: N/A
-Hostmin: N/A
-Hostmax: N/A
-Hosts: N/A
+Broadcast: -*
+Hostmin: -*
+Hostmax: -*
+Hosts: -*
+Message: Loopback - RFC3330
 ```
 
 **CLI JSON Mode:**
@@ -159,23 +153,26 @@ lancalc 224.0.0.1/4 --json
   "Network": "224.0.0.0",
   "Prefix": "/4",
   "Netmask": "240.0.0.0",
-  "Broadcast": "N/A",
-  "Hostmin": "N/A",
-  "Hostmax": "N/A",
-  "Hosts": "N/A",
-  "range_type": "multicast",
-  "advisory": "Multicast addresses (RFC 3171) - not for host addressing"
+  "Broadcast": "-*",
+  "Hostmin": "-*",
+  "Hostmax": "-*",
+  "Hosts": "-*",
+  "message": "Multicast - RFC5771"
 }
 ```
 
-### New JSON Fields
+**GUI Mode:**
+- Host fields (Hostmin, Hostmax, Broadcast, Hosts) show "-*"
+- Status bar displays the special range message instead of version
+- No special styling or warnings needed
 
-The JSON output now includes additional fields for special ranges:
+### JSON Fields
 
-- **`range_type`**: One of "unicast", "loopback", "link_local", "multicast", "unspecified", "broadcast"
-- **`advisory`**: Human-readable explanation with RFC reference (empty for unicast)
+The JSON output always includes a `message` field:
 
-These fields are always present, making the JSON output format consistent regardless of address type.
+- **`message`**: Description and RFC reference for special ranges (empty for normal unicast addresses)
+
+This field is always present, making the JSON output format consistent regardless of address type.
 
 ### Uninstall
 
