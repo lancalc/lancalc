@@ -7,7 +7,15 @@ import pytest
 import sys
 import subprocess
 from lancalc.main import compute, compute_from_cidr, validate_ip, validate_prefix, parse_cidr
-from lancalc.main import LanCalc, calc_network, print_result_json
+from lancalc.main import calc_network, print_result_json
+
+# Try to import LanCalc only if GUI is available
+try:
+    from lancalc.main import LanCalc
+    GUI_TESTS_AVAILABLE = True
+except ImportError:
+    GUI_TESTS_AVAILABLE = False
+    LanCalc = None
 
 # Check if we're in CI environment
 
@@ -113,6 +121,8 @@ test_cases = [
 
 @pytest.fixture
 def app(qtbot):
+    if not GUI_TESTS_AVAILABLE:
+        pytest.skip("GUI not available")
     test_app = LanCalc()
     qtbot.addWidget(test_app)
     return test_app
