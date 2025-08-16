@@ -440,13 +440,13 @@ class TestCIDRParsing:
 
     def test_parse_cidr_invalid_format(self):
         """Test invalid CIDR format."""
-        with pytest.raises(ValueError, match="Expected ADDRESS in CIDR form"):
+        with pytest.raises(ValueError, match="Missing '/' separator"):
             parse_cidr("192.168.1.1")
 
-        with pytest.raises(ValueError, match="Expected ADDRESS in CIDR form"):
+        with pytest.raises(ValueError, match="Prefix part is empty"):
             parse_cidr("192.168.1.1/")
 
-        with pytest.raises(ValueError, match="Expected ADDRESS in CIDR form"):
+        with pytest.raises(ValueError, match="IP address part is empty"):
             parse_cidr("/24")
 
     def test_compute_from_cidr(self):

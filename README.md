@@ -27,6 +27,13 @@ pip3 install lancalc
 pip3 install git+https://github.com/lancalc/lancalc.git
 ```
 
+Install PIP
+
+```bash
+curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+python3 /tmp/get-pip.py
+```
+
 If the `lancalc` command is not found after installation, add the local packages path to PATH:
 
 ```bash
