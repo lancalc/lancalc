@@ -10,7 +10,7 @@ import ipaddress
 from lancalc.core import compute, compute_from_cidr, validate_ip, validate_prefix, parse_cidr
 from lancalc.core import REPO_URL, get_ip
 from lancalc.cli import print_result_json
-from lancalc.gui import get_cidr, _get_cidr_windows, _get_cidr_macos, _get_cidr_linux, cidr_from_netmask
+from lancalc.core import get_cidr, _get_cidr_windows, _get_cidr_macos, _get_cidr_linux, cidr_from_netmask
 
 # Try to import LanCalc only if GUI is available
 try:
@@ -158,8 +158,9 @@ def test_gui_calculate_networks(qtbot, ip, prefix, expected):
     assert app.hostmin_output.text() == expected['hostmin']
     assert app.hostmax_output.text() == expected['hostmax']
     assert app.hosts_output.text() == expected['hosts']
-    # Check color
+    # Check color - for invalid IPs, simulate focus out to trigger validation
     if expected['ip_color'] == 'red':
+        app.validate_ip_on_focus_out()
         assert 'red' in app.ip_input.styleSheet()
     else:
         assert 'color: black' in app.ip_input.styleSheet() or app.ip_input.styleSheet() == ''
@@ -280,15 +281,19 @@ def test_gui_error_handling(qtbot):
     app = LanCalc()
     qtbot.addWidget(app)
     """Test error handling in GUI"""
-    # Test with invalid IP
+    # Test with invalid IP - simulate focus out
     app.ip_input.setText("invalid-ip")
-    app.calculate_network()
+    app.validate_ip_on_focus_out()
     assert 'red' in app.ip_input.styleSheet()
 
-    # Test with empty IP
+    # Test with empty IP - simulate focus out
     app.ip_input.setText("")
-    app.calculate_network()
+    app.validate_ip_on_focus_out()
     assert 'red' in app.ip_input.styleSheet()
+
+    # Test clearing validation on focus in
+    app.clear_validation()
+    assert 'red' not in app.ip_input.styleSheet()
 
 
 @pytest.mark.qt_api("pyqt5")

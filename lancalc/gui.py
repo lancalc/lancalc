@@ -5,35 +5,33 @@ Graphical user interface for LanCalc.
 """
 import ipaddress
 import logging
+import os
 import traceback
-import platform
-import re
-import subprocess
 import sys
 
+# Configure logging
 logging.basicConfig(
-    handlers=[
-        logging.StreamHandler(sys.stderr)
-    ],
+    handlers=[logging.StreamHandler(sys.stderr)],
     level=logging.WARNING,
     format='%(asctime)s.%(msecs)03d [%(levelname)s]: (%(name)s.%(funcName)s) - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
 
-# Import modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
+    from . import __version__ as VERSION
     from . import core
-    REPO_URL = core.REPO_URL
 except ImportError:
-    import core
-    from core import REPO_URL
+    try:
+        from lancalc import __version__ as VERSION
+        import core
+    except Exception as e:
+        logger.warning(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
+        VERSION = "0.0.0"
 
-try:
-    import lancalc
-    VERSION = lancalc.__version__
-except Exception:
-    VERSION = "0.0.0"
+logger.debug(f"LanCalc {VERSION} starting...")
+
 
 # Try to import PyQt5
 try:
@@ -64,147 +62,6 @@ except ImportError:
             pass
 
         Bold = 75
-
-
-def cidr_from_netmask(mask: str) -> int:
-    """Convert netmask to CIDR prefix."""
-    try:
-        parts = [int(x) for x in mask.split(".")]
-        if len(parts) != 4:
-            raise ValueError(f"Invalid netmask format: {mask}")
-
-        # Validate netmask (must be consecutive 1s followed by 0s)
-        binary = "".join(f"{p:08b}" for p in parts)
-        if "01" in binary:  # Check for 1s after 0s
-            raise ValueError(f"Invalid netmask: {mask}")
-
-        return sum(bin(p).count("1") for p in parts)
-    except Exception as e:
-        logger.error(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
-        raise ValueError(f"Invalid netmask: {mask}") from e
-
-
-def get_cidr(ip: str) -> int:
-    """Best-effort CIDR detection using system tools; defaults to /24."""
-    system = platform.system()
-    try:
-        if system == "Windows":
-            return _get_cidr_windows(ip)
-        elif system == "Darwin":
-            return _get_cidr_macos(ip)
-        else:
-            return _get_cidr_linux(ip)
-    except Exception as e:
-        logger.error(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
-        return 24
-
-
-def _get_cidr_windows(ip: str) -> int:
-    """Get CIDR for IP on Windows using ipconfig."""
-    try:
-        result = subprocess.run(
-            ["ipconfig"], capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            lines = result.stdout.split("\n")
-            for i, line in enumerate(lines):
-                if ip in line:
-                    # Look for subnet mask in next few lines
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        if "Subnet Mask" in lines[j]:
-                            mask_match = re.search(r"(\d+\.\d+\.\d+\.\d+)", lines[j])
-                            if mask_match:
-                                try:
-                                    return cidr_from_netmask(mask_match.group(1))
-                                except ValueError:
-                                    pass
-    except Exception as e:
-        logger.error(f"Windows CIDR detection failed: {type(e).__name__} {str(e)}")
-    return 24
-
-
-def _get_cidr_macos(ip: str) -> int:
-    """Get CIDR for IP on macOS using ifconfig."""
-    try:
-        result = subprocess.run(
-            ["ifconfig"], capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            lines = result.stdout.split("\n")
-            for i, line in enumerate(lines):
-                if ip in line:
-                    # Look for netmask in next few lines
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        if "netmask" in lines[j]:
-                            mask_match = re.search(
-                                r"netmask (\d+\.\d+\.\d+\.\d+)", lines[j]
-                            )
-                            if mask_match:
-                                try:
-                                    return cidr_from_netmask(mask_match.group(1))
-                                except ValueError:
-                                    pass
-    except Exception as e:
-        logger.error(f"macOS CIDR detection failed: {type(e).__name__} {str(e)}")
-    return 24
-
-
-def _get_cidr_linux(ip: str) -> int:
-    """Get CIDR for IP on Linux using ip route."""
-    try:
-        # First try to get the route for the specific IP
-        result = subprocess.run(
-            ["ip", "route", "get", ip], capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            # Parse output like: "192.168.1.100 via 192.168.1.1 dev eth0 src 192.168.1.100 uid 1000"
-            for line in result.stdout.split("\n"):
-                if "src" in line and ip in line:
-                    # Extract the route prefix from the routing table
-                    route_result = subprocess.run(
-                        ["ip", "route", "show"],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    if route_result.returncode == 0:
-                        for route_line in route_result.stdout.split("\n"):
-                            if (
-                                route_line.strip()
-                                and ip.split(".")[:3]
-                                == route_line.split()[0].split(".")[:3]
-                            ):
-                                # Found matching route, extract CIDR
-                                cidr_match = re.search(r"/(\d+)", route_line)
-                                if cidr_match:
-                                    return int(cidr_match.group(1))
-
-        # Fallback: try to find the default route and use its CIDR
-        route_result = subprocess.run(
-            ["ip", "route", "show"], capture_output=True, text=True, timeout=10
-        )
-        if route_result.returncode == 0:
-            for route_line in route_result.stdout.split("\n"):
-                if route_line.strip() and "default" in route_line:
-                    # Look for the next hop IP to determine the network
-                    parts = route_line.split()
-                    for i, part in enumerate(parts):
-                        if part == "via" and i + 1 < len(parts):
-                            gateway_ip = parts[i + 1]
-                            # Try to find a route for the gateway's network
-                            for other_line in route_result.stdout.split("\n"):
-                                if (
-                                    other_line.strip()
-                                    and gateway_ip.split(".")[:3]
-                                    == other_line.split()[0].split(".")[:3]
-                                ):
-                                    cidr_match = re.search(r"/(\d+)", other_line)
-                                    if cidr_match:
-                                        return int(cidr_match.group(1))
-                            break
-    except Exception as e:
-        logger.error(f"Linux CIDR detection failed: {type(e).__name__} {str(e)}")
-    return 24
 
 
 class IpInputLineEdit(QLineEdit):
@@ -327,7 +184,7 @@ class LanCalcGUI(QWidget):
             self.add_output_field(main_layout, "Hosts", self.hosts_output)
 
             # Status bar at bottom - shows version or special range message
-            self.status_label = QLabel(f'<a href="{REPO_URL}">LanCalc {VERSION}</a>')
+            self.status_label = QLabel(f'<a href="{core.REPO_URL}">LanCalc {VERSION}</a>')
             self.status_label.setOpenExternalLinks(True)
             self.status_label.setAlignment(Qt.AlignCenter)
             status_font = QFont("Ubuntu", 11)  # 11
@@ -376,7 +233,11 @@ class LanCalcGUI(QWidget):
     def eventFilter(self, obj, event):
         """Event filter for IP input field."""
         if obj == self.ip_input and event.type() == QEvent.FocusOut:
-            self.apply_cidr_from_text(self.ip_input.text())
+            # Validate IP when focus is lost
+            self.validate_ip_on_focus_out()
+        elif obj == self.ip_input and event.type() == QEvent.FocusIn:
+            # Clear validation when focus is gained
+            self.clear_validation()
         elif obj == self.ip_input and event.type() == QEvent.KeyPress:
             key_event = QKeyEvent(event)
             if key_event.key() in [Qt.Key_Enter, Qt.Key_Return, Qt.Key_Tab]:
@@ -402,7 +263,7 @@ class LanCalcGUI(QWidget):
 
             # Set default CIDR (try to detect, fallback to /24)
             try:
-                detected_cidr = get_cidr(self.ip_input.text())
+                detected_cidr = core.get_cidr(self.ip_input.text())
                 self.network_selector.setCurrentIndex(detected_cidr)
                 logger.info(f"Set CIDR selector to: /{detected_cidr}")
             except Exception as e:
@@ -437,6 +298,47 @@ class LanCalcGUI(QWidget):
             return True
         except Exception:
             return False
+
+    def validate_ip_on_focus_out(self):
+        """Validate IP address when focus is lost."""
+        ip = self.ip_input.text().strip()
+
+        if not ip:
+            # Empty IP - show error
+            self.ip_input.setStyleSheet("color: red;")
+            self.status_label.setText("Wrong Address")
+            self.status_label.setStyleSheet("color: red;")
+            return
+
+        try:
+            core.validate_ip(ip)
+            # Valid IP - clear any previous errors
+            self.ip_input.setStyleSheet("")
+            # Update status to version if no special range
+            try:
+                import lancalc
+                version = lancalc.__version__
+            except Exception:
+                version = "0.0.0"
+            self.status_label.setText(f'<a href="{core.REPO_URL}">LanCalc {version}</a>')
+            self.status_label.setStyleSheet("")
+        except Exception:
+            # Invalid IP - show error
+            self.ip_input.setStyleSheet("color: red;")
+            self.status_label.setText("Wrong Address")
+            self.status_label.setStyleSheet("color: red;")
+
+    def clear_validation(self):
+        """Clear validation styling when focus is gained."""
+        self.ip_input.setStyleSheet("")
+        # Update status to version
+        try:
+            import lancalc
+            version = lancalc.__version__
+        except Exception:
+            version = "0.0.0"
+        self.status_label.setText(f'<a href="{core.REPO_URL}">LanCalc {version}</a>')
+        self.status_label.setStyleSheet("")
 
     def check_clipboard(self):
         """Check clipboard for IP address and offer to use it."""
@@ -476,24 +378,9 @@ class LanCalcGUI(QWidget):
             ip = self.ip_input.text().strip()
             logger.info(f"Calculating network for IP: {ip}")
 
-            if not ip:
-                self.ip_input.setStyleSheet("color: red;")
-                self.status_label.setText("Wrong Address")
-                # Clear output fields
-                self.network_output.clear()
-                self.prefix_output.clear()
-                self.netmask_output.clear()
-                self.broadcast_output.clear()
-                self.hostmin_output.clear()
-                self.hostmax_output.clear()
-                self.hosts_output.clear()
-                return
-
-            try:
-                core.validate_ip(ip)
-            except Exception:
-                self.ip_input.setStyleSheet("color: red;")
-                self.status_label.setText("Wrong Address")
+            # Check if IP is valid (validation is already done on focus out)
+            if not ip or not self.validate_ip_address(ip):
+                # IP is invalid - validation styling should already be applied
                 # Clear output fields
                 self.network_output.clear()
                 self.prefix_output.clear()
@@ -540,15 +427,11 @@ class LanCalcGUI(QWidget):
                 else:
                     self.status_label.setText(result["comment"])
             else:
-                try:
-                    import lancalc
-                    version = lancalc.__version__
-                except Exception:
-                    version = "0.0.0"
-                self.status_label.setText(f'<a href="{REPO_URL}">LanCalc {version}</a>')
+                self.status_label.setText(f'<a href="{core.REPO_URL}">LanCalc {VERSION}</a>')
 
             # Clear error styling
             self.ip_input.setStyleSheet("")
+            self.status_label.setStyleSheet("")
 
         except Exception as e:
             logger.error(

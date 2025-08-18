@@ -3,11 +3,11 @@
 """
 Main entry point for LanCalc - adaptive launcher.
 """
-
 import logging
 import os
 import sys
-from typing import Optional
+import traceback
+import typing
 
 # Configure logging
 logging.basicConfig(
@@ -18,20 +18,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import version from package
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
-    import lancalc
-    VERSION = lancalc.__version__
-except Exception:
-    VERSION = "0.0.0"
-
-# Import modules
-try:
+    from . import __version__ as VERSION
     from . import cli, gui
 except ImportError:
-    # Fallback for direct execution
-    import cli
-    import gui
+    try:
+        from lancalc import __version__ as VERSION
+        import cli
+        import gui
+    except Exception as e:
+        logger.warning(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
+        VERSION = "0.0.0"
+
+logger.debug(f"LanCalc {VERSION} starting...")
 
 
 def is_headless_environment() -> bool:
@@ -97,7 +97,7 @@ def detect_interface_mode() -> str:
     return 'gui'
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: typing.Optional[list] = None) -> int:
     """
     Main entry point for LanCalc.
 

@@ -18,19 +18,33 @@ Support IPv4 address formats, subnet masks and prefixes. This tool is particular
 
 ### Installation
 
-**Install LanCalc Stable version:**
+Python 3.9+ is required.
+
+- Default (with GUI):
 
 ```bash
 pip3 install lancalc
 ```
-
-**Or install LanCalc from GitHub:**
+- CLI-only / headless (avoid installing PyQt5):
 
 ```bash
-pip3 install git+https://github.com/lancalc/lancalc.git
+# Install package without dependencies, then only required CLI deps
+pip3 install --no-deps lancalc
+pip3 install -r requirements.txt
 ```
 
-Install PIP
+- Install from GitHub:
+
+```bash
+# With GUI (default)
+pip3 install 'git+https://github.com/lancalc/lancalc.git'
+
+# CLI-only / headless
+pip3 install --no-deps 'git+https://github.com/lancalc/lancalc.git'
+pip3 install -r requirements.txt
+```
+
+If pip is missing:
 
 ```bash
 curl https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
@@ -50,15 +64,21 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
+Notes:
+- On Linux, PyQt5 may require system Qt libraries (xcb plugin). If GUI fails to start, ensure a desktop environment is available and try installing system packages (e.g. Debian/Ubuntu: `sudo apt install python3-pyqt5`), or use the CLI-only steps above.
+- In CI/headless environments, prefer the CLI-only steps above to skip GUI dependencies.
+
 ## Running the Application
 
 ### GUI Mode
 
-After installation, launch the application with the command:
+After installation (default with GUI), launch the application with the command:
 
 ```bash
 lancalc
 ```
+
+LanCalc auto-detects the environment. If GUI dependencies are unavailable or you are in a headless session, the launcher falls back to CLI help. In such cases, use the CLI examples below.
 
 ### CLI Mode
 
@@ -76,6 +96,12 @@ lancalc 10.0.0.1/8
 lancalc 172.16.0.1/16
 lancalc 192.168.1.100/31  # Point-to-point network
 lancalc 192.168.1.1/32    # Single host
+```
+
+You can also run via module:
+
+```bash
+python3 -m lancalc 192.168.1.1/24 --json
 ```
 
 ### Output Format
@@ -117,21 +143,34 @@ That's it! The application will start and automatically detect your current netw
 
 ### Prerequisites
 
-Python 3.9+ is required.
+Python 3.9+ is required. GUI development requires PyQt5 (installed by default).
 
-For production use (CLI only):
+- Production (CLI only):
 ```bash
 pip3 install -r requirements.txt
 ```
 
-For GUI support:
+- Editable install with GUI (default):
 ```bash
-pip3 install -e .[gui]
+pip3 install -e .
 ```
 
-For development:
+- Editable install without GUI:
 ```bash
-pip3 install -e .[dev,gui]
+pip3 install --no-deps -e .
+pip3 install -r requirements.txt
+```
+
+- Full dev setup (with GUI):
+```bash
+pip3 install -e '.[dev]'
+```
+
+- Dev without GUI:
+```bash
+pip3 install --no-deps -e .
+pip3 install -r requirements.txt
+pip3 install pytest pytest-qt pre-commit flake8
 ```
 
 ### Installation for Development
@@ -145,7 +184,11 @@ git clone https://github.com/lancalc/lancalc.git
 ### Running from Source
 
 ```bash
+# GUI (requires PyQt5)
 python3 lancalc/main.py
+
+# CLI
+python3 -m lancalc 192.168.1.1/24
 ```
 
 ### Development Tools

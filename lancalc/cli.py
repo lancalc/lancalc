@@ -5,18 +5,35 @@ Command-line interface for LanCalc.
 """
 
 import json
+import logging
+import os
 import sys
 import typing
+import traceback
 
-# Import modules
+
+# Configure logging
+logging.basicConfig(
+    handlers=[logging.StreamHandler(sys.stderr)],
+    level=logging.WARNING,
+    format='%(asctime)s.%(msecs)03d [%(levelname)s]: (%(name)s.%(funcName)s) - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
-    from . import core, gui
-    import lancalc
-    VERSION = lancalc.__version__
+    from . import __version__ as VERSION
+    from . import core
 except ImportError:
-    import core
-    import gui
-    VERSION = "0.0.0"
+    try:
+        from lancalc import __version__ as VERSION
+        import core
+    except Exception as e:
+        logger.warning(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
+        VERSION = "0.0.0"
+
+logger.debug(f"LanCalc {VERSION} starting...")
 
 
 def print_result_stdout(res: typing.Dict[str, str]) -> None:
@@ -43,7 +60,7 @@ def print_interface_info(json_output: bool = False) -> None:
     """Print information about detected network interfaces."""
     try:
         ip = core.get_ip()
-        cidr = gui.get_cidr(ip)
+        cidr = core.get_cidr(ip)
 
         if json_output:
             interface_info = {
