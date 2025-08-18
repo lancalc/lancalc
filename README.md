@@ -273,7 +273,6 @@ lancalc 224.0.0.1/4 --json
 The JSON output includes the following fields:
 
 - **`comment`**: Description and RFC reference for special ranges (empty for normal unicast addresses)
-- **`comment`**: Description and RFC reference for special ranges (empty for normal unicast addresses)
 - **`hosts`**: Number of available host addresses in the specified subnet
 
 These fields are always present, making the JSON output format consistent regardless of address type.

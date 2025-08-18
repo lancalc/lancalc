@@ -37,7 +37,7 @@ gui = ["PyQt5>=5.15"]
 dist = ["PyInstaller>=6.0.0"]  # бывший build
 
 [project.scripts]
-lancalc = "lancalc.main:main"
+lancalc = "lancalc:main"
 
 [project.urls]
 Homepage = "https://github.com/lancalc/lancalc"
