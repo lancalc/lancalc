@@ -25,12 +25,20 @@ Python 3.9+ is required.
 ```bash
 pip3 install lancalc
 ```
+
 - CLI-only / headless (avoid installing PyQt5):
 
 ```bash
 # Install package without dependencies, then only required CLI deps
 pip3 install --no-deps lancalc
 pip3 install -r requirements.txt
+```
+
+- Install without GUI dependencies:
+
+```bash
+# Install with nogui extras (excludes PyQt5)
+pip3 install 'lancalc[nogui]'
 ```
 
 - Install from GitHub:
@@ -42,6 +50,9 @@ pip3 install 'git+https://github.com/lancalc/lancalc.git'
 # CLI-only / headless
 pip3 install --no-deps 'git+https://github.com/lancalc/lancalc.git'
 pip3 install -r requirements.txt
+
+# Without GUI dependencies
+pip3 install 'git+https://github.com/lancalc/lancalc.git#egg=lancalc[nogui]'
 ```
 
 If pip is missing:
