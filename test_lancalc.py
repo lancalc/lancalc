@@ -20,6 +20,17 @@ except ImportError:
     GUI_TESTS_AVAILABLE = False
     LanCalc = None
 
+
+# Configure logging for tests
+logging.basicConfig(
+    handlers=[logging.StreamHandler(sys.stderr)],
+    level=logging.DEBUG,
+    format='%(asctime)s.%(msecs)03d [%(levelname)s]: (%(name)s.%(funcName)s) - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+
 # Check if we're in CI environment
 
 
@@ -30,7 +41,7 @@ def is_ci_environment():
 # Check if GUI tests should be skipped
 
 
-def should_skip_gui_tests():
+def skip_gui_tests():
     """Check if GUI tests should be skipped."""
     if not GUI_TESTS_AVAILABLE:
         return True
@@ -51,15 +62,6 @@ def should_skip_gui_tests():
         return True
     return False
 
-
-# Configure logging for tests
-logging.basicConfig(
-    handlers=[logging.StreamHandler(sys.stderr)],
-    level=logging.DEBUG,
-    format='%(asctime)s.%(msecs)03d [%(levelname)s]: (%(name)s.%(funcName)s) - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
 
 # Test data: (ip, prefix, expected values in output fields)
 test_cases = [
@@ -158,7 +160,7 @@ def app(qtbot):
 @pytest.mark.parametrize("ip,prefix,expected", test_cases)
 @pytest.mark.qt_api("pyqt5")
 def test_gui_calculate_networks(qtbot, ip, prefix, expected):
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -194,7 +196,7 @@ def test_gui_calculate_networks(qtbot, ip, prefix, expected):
 
 @pytest.mark.qt_api("pyqt5")
 def test_gui_invalid_cidr_handling(qtbot):
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -209,7 +211,7 @@ def test_gui_invalid_cidr_handling(qtbot):
 
 @pytest.mark.qt_api("pyqt5")
 def test_gui_window_launch(qtbot):
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -225,7 +227,7 @@ def test_gui_window_launch(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_validation_ip_address(qtbot):
     """Test IP address validation"""
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -249,7 +251,7 @@ def test_validation_ip_address(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_validation_cidr(qtbot):
     """Test CIDR validation"""
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -312,7 +314,7 @@ def test_gui_special_range_status_bar(qtbot):
 
 @pytest.mark.qt_api("pyqt5")
 def test_gui_error_handling(qtbot):
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -335,7 +337,7 @@ def test_gui_error_handling(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_gui_edge_cases(qtbot):
     """Test edge cases for network calculations"""
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
@@ -367,7 +369,7 @@ def test_gui_edge_cases(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_gui_clipboard_functionality(qtbot):
     """Test clipboard auto-fill functionality"""
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
     from PyQt5.QtWidgets import QApplication
 
@@ -1009,7 +1011,7 @@ def test_network_interface_detection_integration():
 
 def test_gui_clipboard_functionality_no_qtbot():
     """Test clipboard functionality in GUI without qtbot (smoke test)."""
-    if should_skip_gui_tests():
+    if skip_gui_tests():
         pytest.skip("GUI tests disabled in CI/headless environment")
 
     app = LanCalc()
