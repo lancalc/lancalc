@@ -32,10 +32,17 @@ def is_ci_environment():
 
 def should_skip_gui_tests():
     """Check if GUI tests should be skipped."""
-    if is_ci_environment():
-        return True
     if not GUI_TESTS_AVAILABLE:
         return True
+    # In CI environment, check if we have a virtual display
+    if is_ci_environment():
+        # Check if we have a display (virtual or real)
+        try:
+            if os.environ.get('DISPLAY') or os.name == 'nt':
+                return False  # We have a display, run GUI tests
+        except Exception:
+            pass
+        return True  # No display in CI, skip GUI tests
     # Check if we have a display (for headless environments)
     try:
         if not os.environ.get('DISPLAY') and os.name != 'nt':  # No display on Unix-like systems
