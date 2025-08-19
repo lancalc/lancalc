@@ -22,10 +22,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from . import __version__ as VERSION
     from . import core
+    from . import adapters
 except ImportError:
     try:
         from lancalc import __version__ as VERSION
         import core
+        import adapters
     except Exception as e:
         logger.warning(f"{type(e).__name__} {str(e)}\n{traceback.format_exc()}")
         VERSION = "0.0.0"
@@ -248,7 +250,7 @@ class LanCalcGUI(QWidget):
         """Set default values for the interface."""
         try:
             # Get local IP as default
-            local_ip = core.get_ip()
+            local_ip = adapters.get_internal_ip()
             logger.info(f"Detected local IP: {local_ip}")
 
             try:
@@ -263,7 +265,7 @@ class LanCalcGUI(QWidget):
 
             # Set default CIDR (try to detect, fallback to /24)
             try:
-                detected_cidr = core.get_cidr(self.ip_input.text())
+                detected_cidr = adapters.get_cidr(self.ip_input.text())
                 self.network_selector.setCurrentIndex(detected_cidr)
                 logger.info(f"Set CIDR selector to: /{detected_cidr}")
             except Exception as e:

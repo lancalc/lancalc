@@ -17,6 +17,7 @@ from . import core
 from . import cli
 from . import gui
 from . import main
+from . import adapters
 
 # Export LanCalc for tests
 try:
@@ -33,5 +34,6 @@ __all__ = [
     "cli",
     "gui",
     "main",
+    "adapters",
     "LanCalc",
 ]

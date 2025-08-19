@@ -330,3 +330,91 @@ The JSON output includes the following fields:
 - **`hosts`**: Number of available host addresses in the specified subnet
 
 These fields are always present, making the JSON output format consistent regardless of address type.
+
+## Usage
+
+### Command Line Interface
+
+```bash
+# Basic subnet calculation
+lancalc 192.168.1.1/24
+
+# JSON output
+lancalc 192.168.1.1/24 --json
+
+# Show detected network interface information
+lancalc --interface
+lancalc -i
+
+# Show external/public IP address
+lancalc --external
+lancalc -e
+
+# Use multiple info flags simultaneously
+lancalc -i -e
+lancalc -i -e --json
+
+# Show version
+lancalc --version
+```
+
+### Examples
+
+**Basic calculation:**
+```bash
+$ lancalc 192.168.1.1/24
+Network: 192.168.1.0
+Prefix: /24
+Netmask: 255.255.255.0
+Broadcast: 192.168.1.255
+Hostmin: 192.168.1.1
+Hostmax: 192.168.1.254
+Hosts: 254
+```
+
+**JSON output:**
+```bash
+$ lancalc 192.168.1.1/24 --json
+{
+  "network": "192.168.1.0",
+  "prefix": "/24",
+  "netmask": "255.255.255.0",
+  "broadcast": "192.168.1.255",
+  "hostmin": "192.168.1.1",
+  "hostmax": "192.168.1.254",
+  "hosts": "254"
+}
+```
+
+**Interface information:**
+```bash
+$ lancalc -i
+Address: 10.16.69.146
+Prefix: /24
+
+$ lancalc -i --json
+{"address": "10.16.69.146", "prefix": "/24"}
+```
+
+**External IP detection:**
+```bash
+$ lancalc -e
+External IP: 216.66.18.3
+
+$ lancalc -e --json
+{"external_ip": "216.66.18.3"}
+```
+
+**Multiple info flags:**
+```bash
+$ lancalc -i -e
+Address: 10.16.69.146
+Prefix: /24
+
+External IP: 216.66.18.3
+
+$ lancalc -i -e --json
+{"address": "10.16.69.146", "prefix": "/24"}
+
+{"external_ip": "216.66.18.3"}
+```

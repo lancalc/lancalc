@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.9] - 2024-12-19
 
 ### Added
+- **External IP detection**: New `-e/--external` CLI flag to retrieve external/public IP address via `https://ifconfig.me/`
+- **Simultaneous CLI flags**: Support for using multiple info flags simultaneously (e.g., `-i -e`)
+- **Modular architecture**: Created `adapters.py` for external system interactions
+- **Clean separation**: Moved network interface detection and external IP retrieval to `adapters.py`
+- **Enhanced error handling**: Better validation and error messages for external IP retrieval
 - **nogui extras**: New optional dependency group for CLI-only installations without PyQt5
 - **Adaptive launcher**: Main entry point automatically detects environment and chooses CLI/GUI mode
 - **Better error handling**: Improved fallback mechanisms when GUI is unavailable
