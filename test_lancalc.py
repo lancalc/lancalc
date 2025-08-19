@@ -27,6 +27,23 @@ def is_ci_environment():
     """Check if running in CI environment."""
     return os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 'true'
 
+# Check if GUI tests should be skipped
+
+
+def should_skip_gui_tests():
+    """Check if GUI tests should be skipped."""
+    if is_ci_environment():
+        return True
+    if not GUI_TESTS_AVAILABLE:
+        return True
+    # Check if we have a display (for headless environments)
+    try:
+        if not os.environ.get('DISPLAY') and os.name != 'nt':  # No display on Unix-like systems
+            return True
+    except BaseException:
+        return True
+    return False
+
 
 # Configure logging for tests
 logging.basicConfig(
@@ -134,6 +151,8 @@ def app(qtbot):
 @pytest.mark.parametrize("ip,prefix,expected", test_cases)
 @pytest.mark.qt_api("pyqt5")
 def test_gui_calculate_networks(qtbot, ip, prefix, expected):
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
     """Test network calculation through GUI"""
@@ -168,6 +187,8 @@ def test_gui_calculate_networks(qtbot, ip, prefix, expected):
 
 @pytest.mark.qt_api("pyqt5")
 def test_gui_invalid_cidr_handling(qtbot):
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
     """Test handling of invalid CIDR values"""
@@ -181,6 +202,8 @@ def test_gui_invalid_cidr_handling(qtbot):
 
 @pytest.mark.qt_api("pyqt5")
 def test_gui_window_launch(qtbot):
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
     """Test basic window functionality"""
@@ -195,6 +218,8 @@ def test_gui_window_launch(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_validation_ip_address(qtbot):
     """Test IP address validation"""
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
 
@@ -217,6 +242,8 @@ def test_validation_ip_address(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_validation_cidr(qtbot):
     """Test CIDR validation"""
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
 
@@ -278,6 +305,8 @@ def test_gui_special_range_status_bar(qtbot):
 
 @pytest.mark.qt_api("pyqt5")
 def test_gui_error_handling(qtbot):
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
     """Test error handling in GUI"""
@@ -299,6 +328,8 @@ def test_gui_error_handling(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_gui_edge_cases(qtbot):
     """Test edge cases for network calculations"""
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     app = LanCalc()
     qtbot.addWidget(app)
 
