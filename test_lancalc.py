@@ -40,7 +40,7 @@ def should_skip_gui_tests():
     try:
         if not os.environ.get('DISPLAY') and os.name != 'nt':  # No display on Unix-like systems
             return True
-    except BaseException:
+    except Exception:
         return True
     return False
 
@@ -360,6 +360,8 @@ def test_gui_edge_cases(qtbot):
 @pytest.mark.qt_api("pyqt5")
 def test_gui_clipboard_functionality(qtbot):
     """Test clipboard auto-fill functionality"""
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
     from PyQt5.QtWidgets import QApplication
 
     app = LanCalc()
@@ -1000,8 +1002,8 @@ def test_network_interface_detection_integration():
 
 def test_gui_clipboard_functionality_no_qtbot():
     """Test clipboard functionality in GUI without qtbot (smoke test)."""
-    if not GUI_TESTS_AVAILABLE:
-        pytest.skip("GUI not available")
+    if should_skip_gui_tests():
+        pytest.skip("GUI tests disabled in CI/headless environment")
 
     app = LanCalc()
     # Just test that the method doesn't crash

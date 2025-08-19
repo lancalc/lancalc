@@ -342,8 +342,8 @@ lancalc 192.168.1.1/24
 # JSON output
 lancalc 192.168.1.1/24 --json
 
-# Show detected network interface information
-lancalc --interface
+# Show internal/private IP address
+lancalc --internal
 lancalc -i
 
 # Show external/public IP address
